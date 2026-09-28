@@ -1,54 +1,24 @@
 # MySQL com TypeScript — CRUD de usuários
 
-Projeto da aula prática: Node.js + TypeScript + `mysql2`, com cadastro, consulta,
-alteração e exclusão de usuários por **nome** ou **e-mail**, usando consultas
-parametrizadas (proteção contra SQL Injection).
+Atividade prática da aula (slide 24), feita com o código dos slides.
 
 ## Como rodar
 
-1. Crie o banco e a tabela (MySQL 8+):
-   ```bash
-   mysql -u root -p < sql/schema.sql
+1. Execute `sql/schema.sql` no MySQL Workbench ou no cliente `mysql`.
+2. Crie o arquivo `.env` na raiz (ele não vai para o Git):
    ```
-2. Configure as credenciais:
-   ```bash
-   cp .env.example .env   # depois edite a senha
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_USER=root
+   DB_PASSWORD=sua_senha
+   DB_NAME=aula_typescript
    ```
-3. Instale as dependências:
-   ```bash
-   npm install
-   ```
-4. Execute:
-   ```bash
-   npm run conexao    # testa a conexão com o banco
-   npm run dev        # fluxo completo da aula (cadastrar, consultar, alterar, excluir)
-   npm run atividade  # resolução da atividade prática
-   ```
+3. `npm install`
+4. `npm run dev`
 
-## Estrutura
+O programa executa, em ordem, os itens 1 a 5 da atividade. No item 5 ele mostra
+quantos usuários têm o nome informado e pede confirmação (`s/n`) antes de
+excluir homônimos.
 
-| Arquivo | Conteúdo |
-|---|---|
-| `sql/schema.sql` | Criação do banco `aula_typescript` e da tabela `usuarios` |
-| `src/database.ts` | Pool de conexões lendo o `.env` |
-| `src/usuario.ts` | Tipos `Usuario`, `CriterioUsuario` e `NovosDados` |
-| `src/usuarioRepository.ts` | Funções CRUD e o filtro seguro por nome/e-mail |
-| `src/testarConexao.ts` | Teste de conexão |
-| `src/index.ts` | Fluxo completo do slide 14 |
-| `src/atividade.ts` | Atividade prática |
-
-## Atividade prática
-
-1. **Criar o banco e testar a conexão** — `sql/schema.sql` + `npm run conexao`.
-2. **Cadastrar cinco usuários, dois com o mesmo nome** — dois "Carlos Pereira"
-   com e-mails diferentes.
-3. **Consultar por nome e por e-mail** — por nome volta 2 linhas; por e-mail
-   volta no máximo 1, porque a coluna é `UNIQUE`.
-4. **Alterar o nome pelo e-mail e o e-mail pelo nome.**
-5. **Confirmação para excluir homônimos** — em duas camadas:
-   - `excluirUsuario` (repositório) conta as linhas dentro de uma transação e, se
-     o critério atingir mais de uma, lança `ExclusaoMultiplaError` e não apaga
-     nada, a menos que receba `{ confirmarMultiplos: true }`.
-   - `npm run atividade` (interface) captura esse erro, mostra a quantidade e a
-     lista de quem seria apagado e pergunta `Deseja excluir TODOS eles? (s/N)`.
-     Só "s" ou "sim" autorizam; qualquer outra resposta cancela.
+Para rodar de novo sem conflito de e-mail, limpe a tabela antes:
+`TRUNCATE TABLE usuarios;`

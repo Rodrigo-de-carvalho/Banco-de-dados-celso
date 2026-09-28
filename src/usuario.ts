@@ -10,5 +10,3 @@ export interface Usuario {
 export type CriterioUsuario =
   | { nome: string; email?: never }
   | { email: string; nome?: never };
-
-export type NovosDados = { nome?: string; email?: string };

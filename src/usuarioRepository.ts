@@ -1,9 +1,9 @@
 // src/usuarioRepository.ts
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { pool } from './database.js';
-import type { CriterioUsuario, NovosDados, Usuario } from './usuario.js';
+import type { Usuario, CriterioUsuario } from './usuario.js';
 
-// CREATE — cadastra nome e e-mail e devolve o id gerado.
+// 9. Cadastrar nome e e-mail
 export async function cadastrarUsuario(
   nome: string, email: string
 ): Promise<number> {
@@ -19,7 +19,7 @@ export async function cadastrarUsuario(
   return resultado.insertId;
 }
 
-// A coluna vem de uma lista fechada no código; o valor continua parametrizado.
+// 10. Montar um filtro seguro
 function criarFiltro(criterio: CriterioUsuario): {
   coluna: 'nome' | 'email'; valor: string
 } {
@@ -32,7 +32,7 @@ function criarFiltro(criterio: CriterioUsuario): {
   throw new Error('Informe um nome ou um e-mail válido.');
 }
 
-// READ — nome pode retornar várias pessoas; e-mail é UNIQUE.
+// 11. Consultar por nome ou e-mail
 export async function consultarUsuario(
   criterio: CriterioUsuario
 ): Promise<Usuario[]> {
@@ -45,7 +45,21 @@ export async function consultarUsuario(
   return linhas;
 }
 
-// UPDATE — localiza por nome ou e-mail e muda um ou os dois campos.
+// 12. Excluir por nome ou e-mail
+export async function excluirUsuario(
+  criterio: CriterioUsuario
+): Promise<number> {
+  const { coluna, valor } = criarFiltro(criterio);
+  const [resultado] = await pool.execute<ResultSetHeader>(
+    `DELETE FROM usuarios WHERE ${coluna} = ?`,
+    [valor]
+  );
+  return resultado.affectedRows;
+}
+
+// 13. Alterar nome e/ou e-mail
+type NovosDados = { nome?: string; email?: string };
+
 export async function alterarUsuario(
   criterio: CriterioUsuario, dados: NovosDados
 ): Promise<number> {
@@ -66,49 +80,4 @@ export async function alterarUsuario(
        WHERE ${filtro.coluna} = ?`, valores
   );
   return r.affectedRows;
-}
-
-// Lançado quando a exclusão atingiria vários homônimos sem autorização.
-export class ExclusaoMultiplaError extends Error {
-  constructor(public readonly encontrados: Usuario[]) {
-    super(
-      `O critério encontrou ${encontrados.length} usuários. ` +
-      'Confirme a exclusão múltipla ou use o e-mail.'
-    );
-    this.name = 'ExclusaoMultiplaError';
-  }
-}
-
-export type OpcoesExclusao = { confirmarMultiplos?: boolean };
-
-// DELETE — Atividade, item 5: se o critério atingir mais de uma linha,
-// a exclusão só acontece com confirmarMultiplos: true.
-export async function excluirUsuario(
-  criterio: CriterioUsuario, opcoes: OpcoesExclusao = {}
-): Promise<number> {
-  const { coluna, valor } = criarFiltro(criterio);
-  const conexao = await pool.getConnection();
-  try {
-    // A transação garante que o que foi contado é o que será excluído.
-    await conexao.beginTransaction();
-    const [encontrados] = await conexao.execute<(Usuario & RowDataPacket)[]>(
-      `SELECT id, nome, email, criado_em
-         FROM usuarios WHERE ${coluna} = ? FOR UPDATE`,
-      [valor]
-    );
-    if (encontrados.length > 1 && !opcoes.confirmarMultiplos) {
-      throw new ExclusaoMultiplaError(encontrados);
-    }
-    const [resultado] = await conexao.execute<ResultSetHeader>(
-      `DELETE FROM usuarios WHERE ${coluna} = ?`,
-      [valor]
-    );
-    await conexao.commit();
-    return resultado.affectedRows;
-  } catch (erro) {
-    await conexao.rollback();
-    throw erro;
-  } finally {
-    conexao.release();
-  }
 }

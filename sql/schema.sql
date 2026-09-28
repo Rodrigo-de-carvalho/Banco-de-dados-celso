@@ -1,10 +1,10 @@
-CREATE DATABASE IF NOT EXISTS aula_typescript
+CREATE DATABASE aula_typescript
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
 USE aula_typescript;
 
-CREATE TABLE IF NOT EXISTS usuarios (
+CREATE TABLE usuarios (
   id INT AUTO_INCREMENT PRIMARY KEY,
   nome VARCHAR(120) NOT NULL,
   email VARCHAR(160) NOT NULL UNIQUE,
