@@ -45,11 +45,10 @@ parametrizadas (proteção contra SQL Injection).
 3. **Consultar por nome e por e-mail** — por nome volta 2 linhas; por e-mail
    volta no máximo 1, porque a coluna é `UNIQUE`.
 4. **Alterar o nome pelo e-mail e o e-mail pelo nome.**
-5. **Confirmação para excluir homônimos** — `excluirUsuario` conta as linhas
-   dentro de uma transação e, se o critério atingir mais de uma, lança
-   `ExclusaoMultiplaError` (com a lista encontrada) e não apaga nada. A exclusão
-   de vários só acontece com `{ confirmarMultiplos: true }`:
-   ```ts
-   await excluirUsuario({ nome: 'Carlos Pereira' });                               // bloqueado
-   await excluirUsuario({ nome: 'Carlos Pereira' }, { confirmarMultiplos: true }); // autorizado
-   ```
+5. **Confirmação para excluir homônimos** — em duas camadas:
+   - `excluirUsuario` (repositório) conta as linhas dentro de uma transação e, se
+     o critério atingir mais de uma, lança `ExclusaoMultiplaError` e não apaga
+     nada, a menos que receba `{ confirmarMultiplos: true }`.
+   - `npm run atividade` (interface) captura esse erro, mostra a quantidade e a
+     lista de quem seria apagado e pergunta `Deseja excluir TODOS eles? (s/N)`.
+     Só "s" ou "sim" autorizam; qualquer outra resposta cancela.

@@ -1,6 +1,8 @@
 // src/atividade.ts — Atividade prática (slide 24), itens 2 a 5
+import { createInterface } from 'node:readline/promises';
 import type { QueryError } from 'mysql2';
 import { pool } from './database.js';
+import type { CriterioUsuario } from './usuario.js';
 import {
   alterarUsuario, cadastrarUsuario, consultarUsuario,
   excluirUsuario, ExclusaoMultiplaError
@@ -16,6 +18,34 @@ const usuarios = [
 
 function titulo(texto: string): void {
   console.log(`\n=== ${texto} ===`);
+}
+
+// Pergunta ao usuário no terminal; só "s" ou "sim" autorizam.
+async function confirmar(pergunta: string): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const resposta = await rl.question(`${pergunta} (s/N) `);
+    return ['s', 'sim'].includes(resposta.trim().toLowerCase());
+  } finally {
+    rl.close();
+  }
+}
+
+// Item 5: a exclusão tenta sem autorização; se o critério atingir vários
+// homônimos, mostra a quantidade e quem seria apagado e pede confirmação.
+async function excluirComConfirmacao(criterio: CriterioUsuario): Promise<number> {
+  try {
+    return await excluirUsuario(criterio);
+  } catch (erro) {
+    if (!(erro instanceof ExclusaoMultiplaError)) throw erro;
+    console.log(`Atenção: ${erro.encontrados.length} usuários serão excluídos:`);
+    console.table(erro.encontrados);
+    if (!await confirmar('Deseja excluir TODOS eles?')) {
+      console.log('Exclusão cancelada. Nenhum usuário foi removido.');
+      return 0;
+    }
+    return excluirUsuario(criterio, { confirmarMultiplos: true });
+  }
 }
 
 async function main(): Promise<void> {
@@ -62,21 +92,10 @@ async function main(): Promise<void> {
     console.table(await consultarUsuario({ nome: 'Daniel Rocha' }));
 
     titulo('5. Impedir excluir vários homônimos sem autorização');
-    try {
-      await excluirUsuario({ nome: 'Carlos Pereira' });
-    } catch (erro) {
-      if (!(erro instanceof ExclusaoMultiplaError)) throw erro;
-      console.log('Bloqueado:', erro.message);
-      console.table(erro.encontrados);
-    }
-    console.log('Ainda cadastrados:',
+    const removidos = await excluirComConfirmacao({ nome: 'Carlos Pereira' });
+    console.log('Excluídos:', removidos);
+    console.log('Ainda cadastrados com esse nome:',
       (await consultarUsuario({ nome: 'Carlos Pereira' })).length);
-
-    console.log('Excluindo só um deles pelo e-mail:',
-      await excluirUsuario({ email: 'carlos.p@email.com' }));
-
-    console.log('Com autorização explícita:',
-      await excluirUsuario({ nome: 'Carlos Pereira' }, { confirmarMultiplos: true }));
   } catch (erro) {
     console.error('Erro na operação:', erro);
     process.exitCode = 1;
